@@ -16,6 +16,7 @@ public class Calculator {
     private String cursorString = "|";
     private String input = " ";
     private String output = "";
+    private String actionRegex = "(\\+|-|/|\\*|\\^)";
 
     private int cursorIndex = 1;
 
@@ -36,48 +37,11 @@ public class Calculator {
             replaceLastNumber(s);
             return;
         }
-        if ( s.matches( "(sqrt|sin|cos|tan)" ) ){
-            if ( inputRaw.matches( "^.+(\\+|-|/|\\*)$" ) ){
-                _addInput(s);
-                wrapLastWith("");
-                return;
-            }
-            if ( inputRaw.matches("^.+[0-9]$") ){
-                replaceLastNumber(s+"("+lastNumber+")");
-                return;
-            }
-        }
-        if( s.equals(".") ){
-            if ( inputRaw.matches("^.+\\.[0-9]*$") || inputRaw.equals("") || inputRaw.matches("^.+(\\+|-|/|\\*)$")){
-                // input is of format "blabla.123" so another . shouldnt do anything
-                return;
-            }
-        }
-        if ( s.matches("(\\+|-|/|\\*)") && inputRaw.matches( "^.+\\(-\\)$" ) ){
-            // Have unused brackets with (-)
-            return;
-        }
-        if (s.equals("-")){
-            if ( inputRaw.matches("^.+(\\+|-|/|\\*)$") && !isLastWrapped() ){
-                // minus as a modifier, not a subtraction
-                wrapLastWith("-");
-                return;
-            }
-        }
-
-        if ( s.matches("(\\+|-|/|\\*)") && inputRaw.matches("^.+(\\+|-|/|\\*)$") ) {
-            //Some action is going on already. cant stack
-            return;
-        }
-
-        if( s.matches( "(\\+|-|/|\\*)" ) && isLastWrapped() ){
-            unwrapLast();
-        }
 
         if (s.equals("=")){
-            // Gotta put out result
-            Double d = 0.0;
+            Double d;
 
+            // Checking for general user input error
             try{
                 d = eval(inputRaw);
             }catch( Exception e ){
@@ -86,17 +50,20 @@ public class Calculator {
                 return;
             }
 
+            // Checking for zero division
             if (d.isInfinite()){
                 output = "inf";
                 refreshOutput();
                 return;
             }
 
+            // What if its integer?
             if ( d == Math.floor(d) ){
                 output = String.valueOf(d.intValue());
             }else{
                 output = String.valueOf(d);
             }
+
             refreshOutput();
             return;
         }
@@ -117,7 +84,7 @@ public class Calculator {
         return input.endsWith(")");
     }
 
-    public void unwrapLast(){
+    private void unwrapLast(){
         if ( !isLastWrapped() ){
             return;
         }
@@ -150,11 +117,6 @@ public class Calculator {
         return new StringBuilder(s).reverse().toString();
     }
 
-    private String[] inputActoins(){
-        String inputRaw = getInputRaw();
-        return inputRaw.split("\\(?[0-9]+\\.?[0-9]+\\)?");
-    }
-
     private String[] inputNumbers(){
         String inputRaw = getInputRaw();
         return inputRaw.split("\\)?(\\+|-|/|\\*)+\\(?");
@@ -164,10 +126,6 @@ public class Calculator {
         String inputRaw = getInputRaw();
         _setInput( inputRaw.substring(0, inputRaw.length()-cursorIndex+1) + s + inputRaw.substring(inputRaw.length()-cursorIndex+1) );
         refreshDisplay();
-    }
-
-    public void setCursor(int pos){
-        cursorIndex = pos;
     }
 
     public void setResultView(View v){
@@ -211,8 +169,9 @@ public class Calculator {
         refreshOutput();
     }
 
+
     // Copy pasted from https://stackoverflow.com/questions/3422673/evaluating-a-math-expression-given-in-string-form
-    public static double eval(final String str) {
+    private static double eval(final String str) {
         return new Object() {
             int pos = -1, ch;
 
